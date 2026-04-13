@@ -172,7 +172,7 @@ def calc_portfolio_return(
 
     Args:
         bonds       : 편입 채권 리스트 (Bond 객체)
-        allocations : {그룹키: AUM대비 투자비중} - asset_allocator.py 결과 활용
+        allocations : {그룹키: AUM대비 투자비중} - portfolio_allocator.py 결과 활용
         cd_rate     : CD금리
         repo_cost   : 레포 조달비용 (repo_cost.py에서 가져옴)
         curve_slope : 커브 기울기 [ROLLING_TODO] 임시값, 추후 교체
