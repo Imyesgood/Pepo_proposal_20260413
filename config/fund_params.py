@@ -88,9 +88,9 @@ if __name__ == "__main__":
     fp = FundParams(
         net_asset      = 400,
         leverage_ratio = 2.0,
-        start_date     = date(2026, 8, 25),
-        end_date       = date(2027, 2, 25),
-        base_rate      = 0.0275,
+        start_date     = date(2026, 4, 30),
+        end_date       = date(2027, 4, 30),
+        base_rate      = 0.025,
         rating_min     = "AA-",
         rating_max     = "AAA",
         scenarios      = {

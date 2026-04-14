@@ -122,9 +122,9 @@ if __name__ == "__main__":
     from pprint import pprint
 
     result = calc_repo_cost(
-        start_date    = date(2026, 8, 25),
-        end_date      = date(2027, 2, 25),
-        base_rate     = 0.0275,
+        start_date    = date(2026, 4, 30),
+        end_date      = date(2027, 4, 30),
+        base_rate     = 0.0250,
         scenarios     = {
             date(2026,  8, 27): -0.0025,   # -25bp
             date(2026, 10, 22):  0.0000,   # 동결
