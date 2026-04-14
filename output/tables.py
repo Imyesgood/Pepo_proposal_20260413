@@ -80,7 +80,9 @@ def build_ytm_table(
             totals[sc_name]  += contrib
         rows.append(row)
 
-    total_row = {"편입자산": "합 계 (보수공제전)", "YTM": "", "만기": "", "투자비중": "100%"}
+    actual_total_weight = sum(ar.weight for ar in asset_rows)
+    total_row = {"편입자산": "합 계 (보수공제전)", "YTM": "", "만기": "",
+                 "투자비중": f"{actual_total_weight*100:.0f}%"}
     for sc_name in scenarios:
         total_row[sc_name] = round(totals[sc_name], 4)
     rows.append(total_row)

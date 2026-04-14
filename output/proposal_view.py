@@ -203,6 +203,12 @@ def render(bond_groups=None, rc_scenarios=None, group_weights=None):
     )
 
     total_row = t1[t1["편입자산"] == "합 계 (보수공제전)"].iloc[0]
+
+    # 투자비중 합계 검증
+    actual_wt = sum(ar.weight for ar in asset_rows)
+    if abs(actual_wt - 1.0) > 0.01:
+        st.warning(f"투자비중 합계: **{actual_wt*100:.1f}%** — 100%와 차이 {(actual_wt-1)*100:+.1f}%p. 그룹 NAV 비중을 조정하세요.")
+
     mc = st.columns(len(sc_cols))
     for i, sc in enumerate(sc_cols):
         mc[i].metric(sc, f"{total_row[sc]:.3f}%")
