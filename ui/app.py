@@ -406,6 +406,54 @@ with tab4:
                 sel_mats_for_grp = [min(avail_mats, key=lambda m: abs(m - fund_mat))]
 
             # 카테고리 또는 만기 바뀌면 재로드
+            if cat_key != grp["category"] or grp["bonds_df"].empty or sel_mats_for_grp != grp.get("selected_mats"):
+                bonds_df = i_bond[
+                    (i_bond["category"] == bloomberg_cat) &
+                    (i_bond["maturity"].isin(sel_mats_for_grp))
+                    ].sort_values(["maturity", "yield"], ascending=[True, False])[
+                    ["issuer", "rating", "maturity", "yield"]].reset_index(drop=True)
+
+                # 전체 목록 저장 (변경 안 됨), 선택 상태 초기화 (전부 True)
+                st.session_state.bond_groups[idx].update({
+                    "category": cat_key, "name": cat_key,
+                    "bonds_df": bonds_df,
+                    "selected_mats": sel_mats_for_grp,
+                    "checked": {i: True for i in range(len(bonds_df))},  # 선택 상태 분리 저장
+                })
+
+            bonds_df = st.session_state.bond_groups[idx]["bonds_df"]
+            checked = st.session_state.bond_groups[idx].get("checked", {i: True for i in range(len(bonds_df))})
+
+            if not bonds_df.empty:
+                bdf = bonds_df.copy()
+                bdf.insert(0, "선택", [checked.get(i, True) for i in range(len(bdf))])
+
+                # 전체선택/전체해제 버튼
+                bc1, bc2, _ = st.columns([1, 1, 5])
+                if bc1.button("전체선택", key=f"gall_{idx}_{grp['id']}"):
+                    st.session_state.bond_groups[idx]["checked"] = {i: True for i in range(len(bonds_df))}
+                    st.rerun()
+                if bc2.button("전체해제", key=f"gnone_{idx}_{grp['id']}"):
+                    st.session_state.bond_groups[idx]["checked"] = {i: False for i in range(len(bonds_df))}
+                    st.rerun()
+
+                edited = st.data_editor(
+                    bdf, hide_index=True, use_container_width=True,
+                    column_config={"선택": st.column_config.CheckboxColumn("선택", default=True)},
+                    key=f"gedit_{idx}_{grp['id']}"
+                )
+
+                # 선택 상태만 업데이트 (bonds_df 자체는 건드리지 않음)
+                new_checked = {i: bool(edited.iloc[i]["선택"]) for i in range(len(edited))}
+                st.session_state.bond_groups[idx]["checked"] = new_checked
+
+                # 수익률 계산용으로만 selected_df를 따로 노출
+                st.session_state.bond_groups[idx]["selected_bonds_df"] = \
+                    bonds_df[list(new_checked[i] for i in range(len(bonds_df)))].reset_index(drop=True)
+            else:
+                st.warning("해당 만기 데이터 없음")
+
+            # 카테고리 또는 만기 바뀌면 재로드
             if cat_key!=grp["category"] or grp["bonds_df"].empty or sel_mats_for_grp!=grp.get("selected_mats"):
                 bonds_df = i_bond[
                     (i_bond["category"]==bloomberg_cat) &
