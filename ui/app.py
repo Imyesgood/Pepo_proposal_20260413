@@ -317,22 +317,35 @@ with tab4:
     if not bok_in_range:
         st.warning("설정일~만기일 사이 금통위 일정이 없습니다.")
 
-    # +/- 버튼으로 시나리오 수 조절
-    nc1,nc2,nc3=st.columns([1,1,8])
-    if nc1.button("＋ 시나리오"):
-        st.session_state.n_scenarios=min(st.session_state.n_scenarios+1,6); st.rerun()
-    if nc2.button("－ 시나리오"):
-        st.session_state.n_scenarios=max(st.session_state.n_scenarios-1,1); st.rerun()
-    nc3.caption(f"현재 {st.session_state.n_scenarios}개")
+    # 시나리오 탭 목록 관리
+    if "sc_names_list" not in st.session_state:
+        defaults_init=["동결",f"{bok_in_range[0].month}월 인하" if bok_in_range else "시나리오2"]
+        st.session_state.sc_names_list=defaults_init[:st.session_state.n_scenarios]
 
-    n_sc=st.session_state.n_scenarios
-    sc_tabs=st.tabs([f"시나리오 {i+1}" for i in range(n_sc)])
+    # 탭 라벨 표시줄: [시나리오1] [시나리오2] ... [+]
+    tab_labels = st.session_state.sc_names_list + ["＋"]
+    sc_tabs = st.tabs(tab_labels)
+
+    # 마지막 탭(+) 눌리면 추가
+    with sc_tabs[-1]:
+        if len(st.session_state.sc_names_list) < 6:
+            st.session_state.sc_names_list.append(f"시나리오{len(st.session_state.sc_names_list)+1}")
+            st.rerun()
+
     rc_scenarios=[]
-    for i,sc_tab in enumerate(sc_tabs):
+    sc_to_delete = None
+    for i, sc_tab in enumerate(sc_tabs[:-1]):   # 마지막 + 탭 제외
         with sc_tab:
-            defaults=["동결",f"{bok_in_range[0].month}월 인하" if bok_in_range else "시나리오2",
-                      "2회 인하","시나리오4","시나리오5","시나리오6"]
-            sc_name=st.text_input("이름",value=defaults[i] if i<len(defaults) else f"시나리오{i+1}",key=f"rc_scname_{i}")
+            h1, h2 = st.columns([5, 1])
+            sc_name = h1.text_input("이름",
+                value=st.session_state.sc_names_list[i],
+                key=f"rc_scname_{i}",
+                label_visibility="collapsed")
+            st.session_state.sc_names_list[i] = sc_name
+            if h2.button("삭제", key=f"rc_del_{i}",
+                         disabled=len(st.session_state.sc_names_list)<=1):
+                sc_to_delete = i
+
             changes={}
             hdr=st.columns([1,2,2])
             hdr[0].markdown("**금통위**"); hdr[1].markdown("**변동폭**"); hdr[2].markdown("**적용 기준금리**")
@@ -349,6 +362,12 @@ with tab4:
             repo_rate=(avg_base+REPO_SPREAD)*100
             st.info(f"가중평균 기준금리: **{avg_base*100:.3f}%** | 레포금리: **{repo_rate:.3f}%**")
             rc_scenarios.append({"name":sc_name,"changes":{d:v/10000 for d,v in changes.items()},"repo_rate":repo_rate})
+
+    if sc_to_delete is not None:
+        st.session_state.sc_names_list.pop(sc_to_delete)
+        st.session_state.n_scenarios = len(st.session_state.sc_names_list)
+        st.rerun()
+
     st.session_state.rc_scenarios=rc_scenarios
     st.divider()
 
