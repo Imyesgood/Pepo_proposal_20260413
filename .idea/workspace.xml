@@ -30,13 +30,17 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.app.executor": "Run",
     "Python.curve_snapshot.executor": "Run",
     "Python.fund_params.executor": "Run",
     "Python.loader.executor": "Run",
+    "Python.main.executor": "Run",
     "Python.portfolio_allocator.executor": "Run",
+    "Python.proposal_view.executor": "Run",
     "Python.repo_cost.executor": "Run",
     "Python.return_calculator.executor": "Run",
     "Python.spread_analysis.executor": "Run",
+    "Python.tables.executor": "Run",
     "Python.yield_explorer.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
@@ -51,6 +55,7 @@
       <recent name="C:\Users\User\PycharmProjects\Pepo_proposal_20260413\data\raw" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\User\PycharmProjects\Pepo_proposal_20260413\output" />
       <recent name="C:\Users\User\PycharmProjects\Pepo_proposal_20260413\core" />
     </key>
   </component>

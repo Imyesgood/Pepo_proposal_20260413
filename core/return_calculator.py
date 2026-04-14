@@ -367,3 +367,120 @@ if __name__ == "__main__":
     )
 
     result.print_detail(group_detail)
+
+
+# =============================================================================
+# 금리 변동 반영 롤링 수익률
+# =============================================================================
+
+def calc_rate_change_effect(
+    maturity:   float,   # 매입 만기 (년)
+    hold_years: float,   # 보유기간 (년)
+    delta_y:    float,   # 금리 변동폭 (%, e.g. -0.25 = -25bp)
+) -> float:
+    """
+    금리 수준 변동에 따른 가격 효과 (%).
+
+    공식:
+        rate_change_effect = -(잔존만기) × Δy
+        잔존만기 = maturity - hold_years  (simplified duration)
+
+    예시:
+        1.5Y 채권, 6개월 보유, 금리 -25bp 하락
+        → 잔존만기 = 1.0Y
+        → 효과 = -1.0 × (-0.25) = +0.25%  (금리하락 → 가격상승)
+    """
+    remaining_duration = maturity - hold_years  # 잔존만기 ≈ modified duration (근사)
+    if remaining_duration <= 0:
+        return 0.0
+    return -remaining_duration * delta_y   # %
+
+
+def calc_rolling_total(
+    bond:        Bond,
+    sector_data: dict,
+    target_date: pd.Timestamp,
+    hold_years:  float,
+    delta_y:     float = 0.0,   # 금리 변동폭 (%, 0 = 현행 유지)
+) -> dict:
+    """
+    롤링 수익률 전체 분해 반환.
+
+    Returns:
+        {
+          "rolldown":      커브 형태 효과 (%),
+          "rate_change":   금리 수준 변동 효과 (%),
+          "total_rolling": 합계 (%),
+          "delta_y":       입력 금리 변동폭 (%),
+        }
+    """
+    rolldown    = calc_rolling_yield(bond, sector_data, target_date, hold_years)
+    rate_effect = calc_rate_change_effect(bond.maturity, hold_years, delta_y)
+    return {
+        "rolldown":      round(rolldown, 4),
+        "rate_change":   round(rate_effect, 4),
+        "total_rolling": round(rolldown + rate_effect, 4),
+        "delta_y":       delta_y,
+    }
+
+
+def build_rate_scenario_table(
+    bonds:        list[Bond],
+    sector_data:  dict,
+    target_date:  pd.Timestamp,
+    hold_years:   float,
+    delta_y_list: list[float] | None = None,   # [%] e.g. [-0.5, -0.25, 0, 0.25, 0.5]
+) -> pd.DataFrame:
+    """
+    금리 변동 시나리오별 롤링 수익률 테이블.
+
+    Rows:   채권 (issuer)
+    Cols:   Δy 시나리오별 total_rolling(%)
+    마지막: 채권 평균
+
+    예시 출력:
+                     -50bp   -25bp    0bp   +25bp   +50bp
+        용인도시공사   0.674   0.424  0.171  -0.079  -0.329
+        안산도시공사   0.674   0.424  0.171  -0.079  -0.329
+        ...
+        평균          0.674   0.424  0.171  -0.079  -0.329
+    """
+    if delta_y_list is None:
+        delta_y_list = [-0.50, -0.25, 0.0, 0.25, 0.50]
+
+    col_labels = [f"{d*100:+.0f}bp" for d in delta_y_list]
+    rows = []
+    for b in bonds:
+        row = {"발행사": b.issuer, "섹터": b.sector, "등급": b.rating, "만기": b.maturity}
+        for dy, label in zip(delta_y_list, col_labels):
+            result = calc_rolling_total(b, sector_data, target_date, hold_years, delta_y=dy)
+            row[label] = result["total_rolling"]
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+
+    # 평균 행 추가
+    avg_row = {"발행사": "─ 평균 ─", "섹터": "", "등급": "", "만기": ""}
+    for label in col_labels:
+        avg_row[label] = round(df[label].mean(), 4)
+    df = pd.concat([df, pd.DataFrame([avg_row])], ignore_index=True)
+
+    return df
+
+
+def get_delta_y_from_scenarios(
+    base_rate:    float,       # 현재 기준금리 (%)
+    scenarios:    dict,        # {date: 변동폭(소수)} e.g. {date: -0.0025}
+    start_date,
+    end_date,
+) -> float:
+    """
+    금통위 시나리오에서 기간 내 총 금리 변동폭 계산 (%).
+    레포 조달비용 계산과 동일한 구간 적용.
+    """
+    from config.constants import BOK_DATES
+    changes = [
+        bp for d, bp in scenarios.items()
+        if start_date < d <= end_date
+    ]
+    return sum(changes) * 100   # 소수 → %

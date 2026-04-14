@@ -72,3 +72,32 @@ if __name__ == "__main__":
     print(f"\n[ 시계열 스프레드 | 기타금융채(AA-) − 은행채(AAA) | 1Y6M | 최근 10일 ]")
     ts = build_spread_timeseries(sector_data, labels[0], labels[-1], 1.5)
     print(ts.sort_values("date", ascending=False).head(10).to_string(index=False))
+
+
+def build_vs_base_timeseries(
+    sector_data:  dict,
+    base_rate_df: pd.DataFrame,
+    selections:   list[tuple],   # [(섹터라벨, maturity), ...]
+    start: pd.Timestamp = None,
+    end:   pd.Timestamp = None,
+) -> pd.DataFrame:
+    """
+    기준금리 대비 스프레드 시계열.
+    spread_bp = (sector_yield - base_rate) × 100
+    Returns: DataFrame[date, spread_bp, label]
+    """
+    frames = []
+    for (label, mat) in selections:
+        df = sector_data.get(label, pd.DataFrame())
+        ts = df[df["maturity"] == mat][["date", "yield"]].copy()
+        if start: ts = ts[ts["date"] >= start]
+        if end:   ts = ts[ts["date"] <= end]
+
+        br = base_rate_df[["date", "rate"]].rename(columns={"rate": "base"})
+        br["base"] = br["base"] * 100   # 소수 → %
+        merged = ts.merge(br, on="date", how="left").dropna()
+        merged["spread_bp"] = ((merged["yield"] - merged["base"]) * 100).round(2)
+        merged["label"] = f"{label} {MATURITY_LABELS.get(mat, str(mat))}"
+        frames.append(merged[["date", "spread_bp", "label"]])
+
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
