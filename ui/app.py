@@ -363,15 +363,40 @@ with tab4:
     groups_to_del=[]
     for idx,grp in enumerate(st.session_state.bond_groups):
         with st.expander(f"{grp['name']}",expanded=True):
-            g1,g2=st.columns([4,1])
+            g1,g2,g3=st.columns([3,2,1])
             cat_key=g1.selectbox("섹터+등급",list(cat_options.keys()),
                 index=list(cat_options.keys()).index(grp["category"]) if grp["category"] in cat_options else 0,
                 key=f"gcat_{idx}_{grp['id']}")
-            if g2.button("삭제",key=f"gdel_{idx}_{grp['id']}"): groups_to_del.append(idx); continue
-            if cat_key!=grp["category"] or grp["bonds_df"].empty:
-                bloomberg_cat=cat_options[cat_key]
-                bonds_df=get_group_bonds(i_bond,bloomberg_cat,fund_mat,top_n=5)
-                st.session_state.bond_groups[idx].update({"category":cat_key,"name":cat_key,"bonds_df":bonds_df})
+            if g3.button("삭제",key=f"gdel_{idx}_{grp['id']}"): groups_to_del.append(idx); continue
+
+            # 만기 선택 — 기본: 펀드만기, 팝오버로 추가 만기 선택 가능
+            bloomberg_cat = cat_options[cat_key]
+            avail_mats = sorted(i_bond[i_bond["category"]==bloomberg_cat]["maturity"].unique().tolist())
+            stored_mats = grp.get("selected_mats", [fund_mat] if fund_mat in avail_mats else avail_mats[:1])
+            # 펀드만기 없으면 가장 가까운 만기로 초기화
+            if not stored_mats or not any(m in avail_mats for m in stored_mats):
+                stored_mats = [min(avail_mats, key=lambda m: abs(m - fund_mat))]
+            sel_mats_for_grp = g2.multiselect(
+                "만기", avail_mats,
+                default=[m for m in stored_mats if m in avail_mats],
+                format_func=ml,
+                key=f"gmats_{idx}_{grp['id']}",
+                placeholder="만기 선택"
+            )
+            if not sel_mats_for_grp:
+                sel_mats_for_grp = [min(avail_mats, key=lambda m: abs(m - fund_mat))]
+
+            # 카테고리 또는 만기 바뀌면 재로드
+            if cat_key!=grp["category"] or grp["bonds_df"].empty or sel_mats_for_grp!=grp.get("selected_mats"):
+                bonds_df = i_bond[
+                    (i_bond["category"]==bloomberg_cat) &
+                    (i_bond["maturity"].isin(sel_mats_for_grp))
+                ].sort_values(["maturity","yield"], ascending=[True,False])[["issuer","rating","maturity","yield"]].reset_index(drop=True)
+                st.session_state.bond_groups[idx].update({
+                    "category":cat_key, "name":cat_key,
+                    "bonds_df":bonds_df, "selected_mats":sel_mats_for_grp
+                })
+
             bonds_df=st.session_state.bond_groups[idx]["bonds_df"]
             if not bonds_df.empty:
                 bdf=bonds_df.copy(); bdf.insert(0,"선택",True)
