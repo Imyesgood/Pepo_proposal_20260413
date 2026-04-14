@@ -597,9 +597,9 @@ with tab5:
         prop_rows.append(repo_row)
 
         # 현금
-        cash_row={"편입자산":"현금성자산","YTM":f"{cd_avg2:.3f}%","만기":"6M 내외",
+        cash_row={"편입자산":"현금성자산","YTM":f"{cd_avg:.3f}%","만기":"6M 내외",
                   "투자비중":f"{fp2.cash_weight*100:.0f}%"}
-        for r in rc_results: cash_row[r["name"]]=round(cd_avg2*fp2.cash_weight,4)
+        for r in rc_results: cash_row[r["name"]]=round(cd_avg*fp2.cash_weight,4)
         prop_rows.append(cash_row)
 
         # 합계
